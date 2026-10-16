@@ -52,26 +52,30 @@ query_mat <- Matrix(t(custom_scale(t(query_mat))), sparse = TRUE)
 mat_list <- list(ref_mat = ref_mat, query_mat = query_mat)
 
 # integrate query and reference data with StabMap
-stab_embed <- stabMap(assay_list = mat_list, reference_list = names(mat_list),
+stabmap_embed <- stabMap(assay_list = mat_list, reference_list = names(mat_list),
                       plot = FALSE)
 
 # generate UMAP of StabMAP embedding
-stab_umap <- calculateUMAP(t(stab_embed)) 
+stabmap_umap <- calculateUMAP(t(stabmap_embed)) 
 
 # use harmony for batch correction of datasets
-labels <- ifelse(rownames(stab_embed) %in% colnames(mat_list[["ref_mat"]]), 
+labels <- ifelse(rownames(stabmap_embed) %in% colnames(mat_list[["ref_mat"]]), 
                  names(mat_list)[1], names(mat_list)[2])
-names(labels) <- rownames(stab_embed)
-harmony_embed <- RunHarmony(stab_embed, labels, early_stop = early_stop, max_iter = max_iter)
+names(labels) <- rownames(stabmap_embed)
+harmony_embed <- RunHarmony(stabmap_embed, labels, early_stop = early_stop, 
+                            max_iter = max_iter)
 
 # generate UMAP of harmony embedding
 harmony_umap = calculateUMAP(t(harmony_embed))
 
-result <- list(setNames(list(stab_embed, stab_umap), 
-                        c("StabMap_PCA", "StabMap_UMAP")), 
-               setNames(list(harmony_embed, harmony_umap), 
-                        c("Harmony_PCA", "Harmony_UMAP")))
-saveRDS(result, "./stabmap_integrate.Rds")
+# extract reference substate labels 
+ref_substate_labels <- 
+    setNames(as.character(sce_ref$Clusters_updated_knn_basic_k25), 
+             colnames(sce_ref))
+
+save(stabmap_embed, stabmap_umap, harmony_embed, harmony_umap, 
+     ref_substate_labels, file = "./stabmap_integrate.RData", compress = "xz",
+     compression_level = 9)
 
 
 
