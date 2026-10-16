@@ -3,11 +3,11 @@ library(scuttle)
 library(scater)
 library(ggrepel)
 library(dplyr)
-library(patchwork)
 
 set.seed(2026)
 
-spe <- readRDS(file = "./processed_data/cartana_spe_annotated_relabel.Rds")
+# load processed data 
+spe <- readRDS("./spe_processed_final.Rds")
 
 day_cols <- setNames(c("#e3191c", "#377db8", "#4eaf4a", "#974ea3", 
                        "#ff7f00", "#ff01ff"),

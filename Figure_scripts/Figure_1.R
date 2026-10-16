@@ -7,8 +7,9 @@ library(reshape2)
 
 set.seed(2026)
 
-me <- readRDS("./processed_data/ME_objects/me_Day7_2.Rds")
-spe <- readRDS("./cartana_spe_annotated_relabel.Rds")
+
+# load processed data 
+spe <- readRDS("./spe_processed_final.Rds")
 
 cardiacCells_cols <- setNames(c("#ff5732", "#18a085", "#1e618d", "#9b59b6", 
                                 "#f29c13"), 
@@ -18,6 +19,8 @@ cardiacCells_cols <- setNames(c("#ff5732", "#18a085", "#1e618d", "#9b59b6",
 
 
 #### Panel B ####
+
+me <- readRDS("./processed_data/ME_objects/me_Day7_2.Rds")
 
 # plot nuclei
 nuclei_plt <- ggplot_me() +
@@ -71,26 +74,24 @@ transcript_plt <- ggplot_me() +
 
 
 
-#### Panel D ####
-
-bar_plot <- table(spe$sample_id, 
-                  spe$Major.groups) %>%
-    as.data.frame() %>%
-    ggplot(aes(x = Var1, y = Freq, fill = Var2)) +
-    geom_bar(stat = "identity") + 
-    scale_fill_manual(values = cardiacCells_cols) +
-    labs(y = "Number of cells") +
+#### Panel C ####
+plot_1c <- table(spe$condition, spe$replicate) %>%
+    reshape2::melt() %>%
+    mutate(Var2 = as.character(Var2)) %>%
+    ggplot(aes(x = Var1, y = value, group = Var2, fill = Var2, color = Var2)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    scale_fill_manual(values = c("1" = "white", "2" = "grey50")) +
+    scale_color_manual(values = c("black", "black")) +
+    labs(x = NULL, y  = "Cell number") + 
     theme_classic() +
     theme(axis.text = element_text(size = 10),
-          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5),
           axis.title = element_text(size = 12),
-          axis.title.x = element_blank(),
           legend.text = element_text(size = 10),
           legend.title = element_blank())
+    
 
 
-
-#### Panel E ####
+#### Panel D ####
 
 # cardiac cell type markers
 markers_v <- c("Gja1", "Tnnc1", "Vegfa", "Cdh2", "Mt1", "Egfl7", "Cdh5", "Ly6a",
@@ -141,7 +142,7 @@ markerPlot <- summary_data %>%
 
 
 
-#### Panel F ####
+#### Panel E ####
 
 spe <- runUMAP(spe, dimred = "PCA_area_cosine_sum", n_threads = 16,
                n_neighbors = 10, min_dist = 0.5, n_dimred = 30, 
