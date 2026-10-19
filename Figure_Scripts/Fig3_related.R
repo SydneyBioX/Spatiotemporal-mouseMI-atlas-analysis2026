@@ -15,7 +15,7 @@ set.seed(2026)
 # load processed data 
 spe <- readRDS("./spe_processed_final.Rds")
 
-# organising samples
+# organise samples
 spe$sample_id <- factor(spe$sample_id, 
                         levels = c("Sham_1", "Sham_2", "Day1_1", "Day1_2", 
                                    "Day3_1", "Day3_2", "Day5_1", "Day5_2", 
