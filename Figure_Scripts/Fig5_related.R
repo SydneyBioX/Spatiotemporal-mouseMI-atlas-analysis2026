@@ -1,5 +1,7 @@
 library(SpatialExperiment)
 library(scater)
+library(ggplot2)
+library(dplyr)
 
 set.seed(2026)
 

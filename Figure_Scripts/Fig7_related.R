@@ -379,7 +379,7 @@ Heatmap(correl_mat,
 
 
 
-#### Fig. 7F & Extended Fig. 8 ####
+#### Fig. 7F & Extended Fig. 8A ####
 
 # load processed ISS data
 spe <- readRDS("./spe_processed_final.Rds")

@@ -38,6 +38,10 @@ fib_cols <- setNames(c("#4CD02D", "#E88321", "#DE331D", "#E9EA38", "#B7C1CD",
 
 
 
+
+
+#### Fig. 6A & Extended Fig. 6B####
+
 # subset data to fibroblasts in BZ and IZ for cell density plots
 # exclude Sham samples, since they have no zones
 spe_sub <- spe[, spe$Major.groups == "Fibroblast" & spe$major_zone != "RZ" &
@@ -76,7 +80,9 @@ dense_df <- data.frame( # building data frame
                                           "Day5_1", "Day5_2", "Day7_1", "Day7_2",
                                           "Day14_1", "Day14_2"))))
 
-#### Fig. 6A ####
+
+
+##### For Fig. 6A #####
 
 cell_density_plt <- dense_df %>%
     group_by(sample, fibroblast) %>%
@@ -109,9 +115,7 @@ cell_density_plt <- dense_df %>%
           strip.text = element_text(size = 12, face = "bold"))
 
 
-
-
-#### Extended Fig. 6B ####
+##### For Extended Fig. 6B #####
 
 cell_density_plt2 <- dense_df %>%
     group_by(sample, fibroblast) %>%

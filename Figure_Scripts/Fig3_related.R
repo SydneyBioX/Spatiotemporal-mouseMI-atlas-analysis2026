@@ -250,7 +250,7 @@ bar_plot_zones <- table(spe$sample_id, spe$major_zone_ed) %>%
 
 
 
-#### Extended Fig. 3B ####
+#### Extended Fig. 3C ####
 
 # exclude Sham from BZ and IZ as Sham shows no zonation
 speX <- spe[, !(spe$condition == "Sham" & spe$major_zone_ed %in% c("BZ", "IZ"))]
