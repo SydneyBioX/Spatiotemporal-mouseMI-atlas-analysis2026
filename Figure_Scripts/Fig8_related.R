@@ -354,7 +354,6 @@ morani_plot <- ggplot(moran_df, aes(x = Sample, y = moran_I, group = k)) +
 
 #### Fig. 8E & Extended Fig. 9E ####
 
-
 # exclude F-WntX cells with false WntX signal (only keep Wif1+ F-WntX cells) 
 # add Wif1 expression per cell
 spe$Wif1_exp <- as.numeric(assay(spe, "logcounts_area")["Wif1",])
@@ -379,14 +378,14 @@ names(spe$Major.groups) <- colnames(spe)
 # add cell ids to immune cell groups
 names(spe$Immune_ct) <- colnames(spe)
 
-# creating fibrotic class labels
+# create fibrotic class labels
 fibrotic_labels <- 
     ifelse(spe$fibStates %in% c("MYO", "MFC"), 
            paste0(spe$fibStates, "_", 
                   spe$fibrotic_score_class), NA)
 myo_grps <- unique(fibrotic_labels[!is.na(fibrotic_labels)])
 
-# creating neighbouring cell labels
+# create neighbouring cell labels
 cell_annots <- case_when(
     # Fibroblast neighbours
     spe$Major.groups == "Fibroblast" & spe$fibStates %in% c("MYO", "MFC") ~
@@ -401,9 +400,9 @@ names(cell_annots) <- colnames(spe)
 celltype_labels <- c(unique(cell_annots[!is.na(cell_annots)]), # unique labels
                      c("MYO", "MFC", "Fibroblast", "Immune")) # add other broad groups
 
-# getting CF substate labels - use to add additional CF column in final mat
+# get CF substate labels - use to add additional CF column in final mat
 fibStates <- as.character(unique(na.omit(spe$fibStates)))
-# getting CF substate labels - use to add additional Immune column in final mat
+# get immune labels - use to add additional Immune column in final mat
 immCelltypes <- as.character(unique(spe$Immune_ct[spe$Immune_ct != "Other"]))
 
 
@@ -428,7 +427,6 @@ for (s in unique(spe$sample_id)) {
 
 # DETECT NEIGHBOURS
 
-# function for identifying k nearest neighbours of fibrotic cells in each sample
 findNeighCount <- function(spe, samples, k, cell_annots, myo_grps, 
                            celltype_labels, fibStates, immCelltypes) {
     
@@ -520,7 +518,6 @@ knn5_df <- bind_rows(knn5_df_list) %>%
 # rename the rows - add sample names
 rownames(knn5_df) <- paste0(knn5_df$Sample, "---", 
                             knn5_df$Source_labels)
-
 
 
 # STATISTICAL ANALYSIS

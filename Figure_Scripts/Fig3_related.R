@@ -33,11 +33,13 @@ cardiacCells_cols <- setNames(c("#ff5732", "#18a085", "#1e618d", "#9b59b6",
                               c("Cardiomyocyte" , "Endothelial", "Fibroblast",
                                 "Immune", "Stressed cardiomyocyte"))
 
-#### Panel A ####
+
+
+#### Fig. 3A ####
 
 allCells_sp_plot <- plotReducedDim(spe, dimred = "spatial", point_size = 0.5,
-                                   color_by = "major_zone_ed",scattermore = TRUE,
-                                   point_alpha = 1) +
+                                   color_by = "major_zone_ed", point_alpha = 1,
+                                   scattermore = TRUE) +
     facet_wrap(~ spe$sample_id, scales = "free") +
     scale_color_manual(values = zone_cols) +
     guides(color = guide_legend(override.aes = list(size = 5))) +
@@ -55,7 +57,8 @@ allCells_sp_plot <- plotReducedDim(spe, dimred = "spatial", point_size = 0.5,
 
 
 
-#### Panel B ####
+
+#### Fig. 3B ####
 
 spe <- runUMAP(spe, dimred = "PCA_area_cosine_sum", n_threads = 16,
                n_neighbors = 10, min_dist = 0.5, n_dimred = 30, 
@@ -96,7 +99,8 @@ umap_celltypes_list <- setNames(lapply(unique(spe$condition), function(cond) {
 
 
 
-#### Panel C ####
+
+#### Fig. 3C ####
 
 markers_ct <- c("Gja1", "Tnnc1", "Egfl7", "Cdh5", "Col1a1", "Postn", "Cd74",
                 "Tyrobp", "Nppa", "Clu")
@@ -149,7 +153,7 @@ gene_zone_hm <- Heatmap(summary_mat,
 
 
 
-#### Panel D ####
+#### Fig. 3D ####
 
 bar_plot_all <- table(spe$sample_id, spe$major_zone_ed) %>%
     as.data.frame() %>%
@@ -170,9 +174,9 @@ bar_plot_all <- table(spe$sample_id, spe$major_zone_ed) %>%
 
 
 
-#### Panel E ####
+#### Fig. 3E ####
 
-# excluding Sham from BZ and IZ as Sham shows no zonation
+# exclude Sham from BZ and IZ as Sham shows no zonation
 speX <- spe[, !(spe$condition == "Sham" & spe$major_zone_ed %in% c("BZ", "IZ"))]
 
 zn_ct_plot <- table(speX$sample_id, speX$Major.groups, speX$major_zone_ed) %>%
@@ -185,6 +189,82 @@ zn_ct_plot <- table(speX$sample_id, speX$Major.groups, speX$major_zone_ed) %>%
     facet_wrap(~Var3, scales = "free_x") +
     scale_fill_manual(values = cardiacCells_cols) +
     labs(y = "Number of cells") +
+    theme_classic() +
+    theme(axis.text = element_text(size = 10),
+          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5),
+          axis.title = element_text(size = 12),
+          axis.title.x = element_blank(),
+          legend.text = element_text(size = 10),
+          legend.title = element_blank(),
+          strip.background = element_blank(),
+          strip.text = element_text(size = 14, face = "bold"))
+
+
+
+
+#### Extended Fig. 3A ####
+
+zone_ct_markers <- c("Nppa", "Clu", "Postn", "Col1a1")
+
+zn_ct_sig_check <- setNames(lapply(zone_ct_markers, function(gene) {
+    spe$gene_exp <- scale(assay(spe, "logcounts_area")[gene, ])
+    plt_intense <- colData(spe) %>%
+        as.data.frame() %>%
+        ggplot(aes(x = gene_exp, color = major_zone_ed, fill = major_zone_ed)) +
+        geom_density(bw = 0.2, linewidth = 0.8, alpha = 0.1) +
+        xlim(0, 6) +
+        facet_wrap(~sample_id, ncol = 2, nrow = 6) +
+        labs(x = paste(gene, "expression"), y = "Cell density") +
+        scale_fill_manual(values = zone_cols) +
+        scale_color_manual(values = zone_cols) +
+        theme_classic() +
+        theme(axis.text = element_text(size = 12),
+              axis.title = element_text(size = 14),
+              legend.text = element_text(size = 12),
+              legend.title = element_blank(),
+              strip.text = element_text(size = 14))
+    return(plt_intense)
+}), zone_ct_markers)
+
+
+
+
+#### Extended Fig. 3B ####
+
+bar_plot_zones <- table(spe$sample_id, spe$major_zone_ed) %>%
+    as.data.frame() %>%
+    # excluding Sham, which shows no zonation
+    filter(!(Var1 %in% c("Sham_1", "Sham_2"))) %>%
+    mutate(Var1 = factor(Var1, levels = levels(spe$sample_id))) %>%
+    ggplot(aes(x = Var1, y = Freq, fill = Var2)) +
+    geom_bar(stat = "identity", position = "fill") + 
+    scale_fill_manual(values = zone_cols) +
+    labs(y = "Proportion of cells in major zones") +
+    theme_classic() +
+    theme(axis.text = element_text(size = 10),
+          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5),
+          axis.title = element_text(size = 12),
+          axis.title.x = element_blank(),
+          legend.text = element_text(size = 10),
+          legend.title = element_blank())
+
+
+
+#### Extended Fig. 3B ####
+
+# exclude Sham from BZ and IZ as Sham shows no zonation
+speX <- spe[, !(spe$condition == "Sham" & spe$major_zone_ed %in% c("BZ", "IZ"))]
+
+zn_ct_plot_stack <- table(speX$sample_id, speX$Major.groups, speX$major_zone_ed) %>%
+    as.data.frame() %>%
+    # remove row combinations with no cells
+    filter(rowSums(across(Freq) != 0) > 0) %>%
+    mutate(Var1 = factor(Var1, levels = levels(spe$sample_id))) %>%
+    ggplot(aes(x = Var1, y = Freq, fill = Var2, group = Var2)) +
+    geom_bar(stat = "identity", position = "fill") + 
+    facet_wrap(~Var3, scales = "free_x") +
+    scale_fill_manual(values = cardiacCells_cols) +
+    labs(y = "Proportion of cells") +
     theme_classic() +
     theme(axis.text = element_text(size = 10),
           axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5),

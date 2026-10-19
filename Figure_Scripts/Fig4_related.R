@@ -22,6 +22,25 @@ spe$sample_id <- factor(spe$sample_id,
 # subset to fibroblasts
 spe_fib <- spe[, spe$Major.groups == "Fibroblast"]
 
+spe_fib <- runPCA(spe_fib, exprs_values = "logcounts_area",
+                  name = "PCA_log_area")
+spe_fib <- runUMAP(spe_fib, name = "UMAP_log_area")
+
+# exclude F-WntX cells with false WntX signal (only keep Wif1+ F-WntX cells) 
+# add Wif1 expression per cell
+spe_fib$Wif1_exp <- as.numeric(assay(spe_fib, "logcounts_area")["Wif1",])
+# add Wif1 detection status
+spe_fib$Wif1_detetct <- ifelse(spe_fib$Wif1_exp == 0, "No", "Yes")
+# relabel F-WntX to F-WntX (Wif1), if the cell has Wif1 expression, else NA
+spe_fib$fibStates <- ifelse(spe_fib$stabmapHarmonyDataset_lt_exact == "F-WntX",
+                            ifelse(spe_fib$Wif1_detetct == "Yes", "F-WntX",
+                                   NA),
+                            as.character(spe_fib$stabmapHarmonyDataset_lt_exact))
+spe_fib$fibStates <- factor(spe_fib$fibStates, 
+                            levels = c("F-SH", "F-SL", "F-Trans", "F-WntX", 
+                                       "F-Act", "IR", "F-CI", "F-Cyc", "MYO",
+                                       "MFC", "F-IFNS"))
+
 fib_cols <- setNames(c("#4CD02D", "#E88321", "#DE331D", "#E9EA38", "#B7C1CD",
                        "#5CA6C9", "#F7CADE", "#479B74", "#ADF0E9", "#C850BA", 
                        "#4559B0"),
@@ -30,7 +49,7 @@ fib_cols <- setNames(c("#4CD02D", "#E88321", "#DE331D", "#E9EA38", "#B7C1CD",
 
 
 
-#### Panel A ####
+#### Fig. 4A ####
 
 # data frame of integrated datasets
 embed_df <- as.data.frame(harmony_umap) %>%
@@ -79,7 +98,8 @@ plt_4a <- plt_by_dataset + plt_by_substate
 
 
 
-#### Panel B ####
+
+#### Fig. 4B ####
 
 substate_markers <- c("Postn", "Eln", "Col8a1", "Col1a1", "Cilp", "Timp1", 
                       "Vim", "Acta2", "Fn1", "Stmn1", "Cdc20", "Mki67", "Top2a", 
@@ -129,11 +149,8 @@ markerPlot <- summary_data %>%
 
 
 
-#### Panel C ####
 
-spe_fib <- runPCA(spe_fib, exprs_values = "logcounts_area",
-                  name = "PCA_log_area")
-spe_fib <- runUMAP(spe_fib, name = "UMAP_log_area")
+#### Fig. 4C ####
 
 # plot all samples together
 umap_substates <- plotReducedDim(spe_fib, dimred = "UMAP_log_area", 
@@ -178,7 +195,7 @@ umap_substates_samples <-
 
 
 
-#### Panel D ####
+#### Fig. 4D ####
 
 substate_bar_plot <- table(spe_fib$sample_id, 
                            spe_fib$stabmapHarmonyDataset_lt_exact) %>%
@@ -194,3 +211,60 @@ substate_bar_plot <- table(spe_fib$sample_id,
           axis.title.x = element_blank(),
           legend.text = element_text(size = 10),
           legend.title = element_blank())
+
+
+
+
+#### Extended Fig. 4A ####
+
+fib_table <- table(spe_fib$sample_id, spe_fib$fibStates)
+fib_table <- rbind(fib_table, "Total cells" = colSums(fib_table))
+
+
+
+
+#### Extended Fig. 4B ####
+
+gene_df <- data.frame(cells = colnames(spe_fib),
+                      sample = spe_fib$sample_id,
+                      umap1 = reducedDim(spe_fib, "UMAP_log_area")[, 1],
+                      umap2 = reducedDim(spe_fib, "UMAP_log_area")[, 2])
+
+gene_ss <- c("F-SH" = "Ly6a", "F-SL" = "Ndufa4l2", "F-Trans" = "Fgl2", 
+             "F-WntX" = "Wif1", "F-Act" = "Postn", "IR" = "Cxcl5", 
+             "F-CI" = "Top2a", "F-Cyc" = "Cdc20", "MYO" = "Col1a1", 
+             "MFC" = "Comp", "F-IFNS" = "Cxcl10")
+
+gene_umap_plt_list <- setNames(lapply(gene_ss, function(gene) {
+    gene_df <- gene_df %>%
+        mutate(gene_exp = as.numeric(assay(spe_fib, "logcounts_area")[gene,]),
+               gene_exp_z = scale(gene_exp)) %>%
+        arrange(gene_exp_z)
+    max_lim <- max(gene_df$gene_exp_z)
+    min_lim <- min(gene_df$gene_exp_z)
+    
+    plt <- ggplot(gene_df, aes(x = umap1, y = umap2, color = gene_exp_z)) +
+        geom_point(size = 0.05) +
+        facet_wrap(~sample, nrow = 1) + 
+        scale_color_viridis_c() +
+        scale_color_gradientn(
+            colors = c("#5a53a4", "#5ab0ab", "#fffbbb", "orange", "#a10741"),
+            values = rescale(c(min_lim, min_lim/2, 0, max_lim/2, max_lim)),
+            limits = c(min_lim, 5), oob = squish) +
+        labs(color = gene) +
+        theme_classic() +
+        theme(plot.background = element_rect(fill = "black"),
+              panel.background = element_rect(fill = "black"),
+              panel.border = element_blank(),
+              axis.line = element_blank(),
+              axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              axis.title = element_blank(),
+              strip.background = element_blank(),
+              strip.text = element_text(size = 20, colour = "white"),
+              legend.background = element_rect(fill = "black"),
+              legend.text = element_text(size = 14, colour = "white"),
+              legend.title = element_text(size = 20, colour = "white"))
+    return(plt)
+}), names(gene_ss))
+

@@ -4,6 +4,7 @@ library(SpatialExperiment)
 library(dplyr)
 library(scran)
 library(reshape2)
+library(scattermore)
 
 set.seed(2026)
 
@@ -18,7 +19,7 @@ cardiacCells_cols <- setNames(c("#ff5732", "#18a085", "#1e618d", "#9b59b6",
 
 
 
-#### Panel B ####
+#### Fig. 1B ####
 
 me <- readRDS("./processed_data/ME_objects/me_Day7_2.Rds")
 
@@ -74,7 +75,7 @@ transcript_plt <- ggplot_me() +
 
 
 
-#### Panel C ####
+#### Fig. 1C ####
 plot_1c <- table(spe$condition, spe$replicate) %>%
     reshape2::melt() %>%
     mutate(Var2 = as.character(Var2)) %>%
@@ -91,18 +92,15 @@ plot_1c <- table(spe$condition, spe$replicate) %>%
     
 
 
-#### Panel D ####
+#### Fig. 1D ####
 
 # cardiac cell type markers
-markers_v <- c("Gja1", "Tnnc1", "Vegfa", "Cdh2", "Mt1", "Egfl7", "Cdh5", "Ly6a",
+markers_ct <- c("Gja1", "Tnnc1", "Vegfa", "Cdh2", "Mt1", "Egfl7", "Cdh5", "Ly6a",
                "Kdr", "Cd34", "Col1a1", "Postn", "Fn1", "Eln", "Col15a1", "Apoe",
                "Cd74", "C1qa", "C1qb", "Tyrobp", "Nppa", "Clu", "Thbs4", "Cxcr6")
-# check markers are in dataset
-top_markers <- intersect(markers_v, rownames(spe))
-
 
 # extract normalised expression
-gexp_marker <- assay(spe, "logcounts_area")[top_markers, ] |> 
+gexp_marker <- assay(spe, "logcounts_area")[markers_ct, ] |> 
     as.matrix() |> t() |> as.data.frame()
 
 # add cluster labels to expression data frame
@@ -142,11 +140,7 @@ markerPlot <- summary_data %>%
 
 
 
-#### Panel E ####
-
-spe <- runUMAP(spe, dimred = "PCA_area_cosine_sum", n_threads = 16,
-               n_neighbors = 10, min_dist = 0.5, n_dimred = 30, 
-               metric = "cosine", name = "UMAP_new")
+#### Fig. 1E ####
 
 # aggregate
 umap_celltypes <- plotReducedDim(spe, dimred = "UMAP_new", 
@@ -180,3 +174,67 @@ umap_celltypes_list <- setNames(lapply(unique(spe$condition), function(cond) {
               panel.border = element_blank())
     return(plt)
 }), unique(spe$condition))
+
+
+
+
+#### Extended Fig. 1C ####
+
+libsize_box <- colData(spe) %>%
+    as.data.frame() %>%
+    mutate(Major.groups = 
+               factor(Major.groups, 
+                      levels = c("Stressed cardiomyocyte", "Fibroblast", 
+                                 "Cardiomyocyte", "Immune", "Endothelial"))) %>%
+    ggplot(aes(x = Major.groups, y = total, fill = Major.groups)) +
+    geom_boxplot() +
+    scale_fill_manual(values = cardiacCells_cols) +
+    labs(x = NULL, y = "Total transcripts\ndetected / cell") +
+    theme_classic() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 14))
+
+
+
+
+#### Extended Fig. 1D ####
+
+detect_box <- colData(spe) %>%
+    as.data.frame() %>%
+    mutate(Major.groups = 
+               factor(Major.groups, 
+                      levels = c("Fibroblast", "Stressed cardiomyocyte", 
+                                 "Immune", "Endothelial", "Cardiomyocyte"))) %>%
+    ggplot(aes(x = Major.groups, y = detected, fill = Major.groups)) +
+    geom_boxplot() +
+    scale_fill_manual(values = cardiacCells_cols) +
+    labs(x = NULL, y = "Number of unique\ngenes detected / cell") +
+    theme_classic() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 12),
+          axis.title = element_text(size = 14))
+
+
+
+
+#### Extended Fig. 1E ####
+
+me_files_list <- paste0("me_", c("Sham_1", "Sham_2", "Day1_1", "Day1_2", 
+                               "Day3_1", "Day3_2", "Day5_1", "Day5_2", 
+                               "Day7_1", "Day7_2", "Day14_1", "Day14_2"), ".Rds")
+
+# plot transcripts
+plots_all <- setNames(lapply(me_files_list, function(samp) {
+    
+    # load me object of sample
+    me <- readRDS(me_list[[samp]])
+    mols_df <- molecules(me, assayName = "detected", flatten = T)
+    
+    plt <- ggplot(mols_df, aes(x = x_location, y = y_location)) +
+        geom_scattermore(pointsize = 1, alpha = 1, color = "grey20") +
+        coord_fixed() +
+        theme_void()
+    
+    return(plt)
+}), me_files_list)

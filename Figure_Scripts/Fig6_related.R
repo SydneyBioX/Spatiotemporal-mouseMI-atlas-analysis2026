@@ -80,13 +80,13 @@ dense_df <- data.frame( # building data frame
 
 cell_density_plt <- dense_df %>%
     group_by(sample, fibroblast) %>%
-    filter(n() > 100) %>% # keeping only subgroups with more than 100 cells
-    do({ # calculating cell densities for subgroups to ensure comparability
+    filter(n() > 100) %>% # keep only subgroups with more than 100 cells
+    do({ # calculate cell densities for subgroups to ensure comparability
         d <- density(.$distance, bw = 300) 
         data.frame(x = d$x, y = d$y * nrow(.)) 
     }) %>% 
     ungroup() %>%
-    # plotting cell densities
+    # plot cell densities
     ggplot(aes(x = x, y = sample, height = y, color = fibroblast, 
                fill = fibroblast)) +
     geom_vline(xintercept = 0, col = "grey50", linetype = "dashed", linewidth = 0.2) +
@@ -115,12 +115,12 @@ cell_density_plt <- dense_df %>%
 
 cell_density_plt2 <- dense_df %>%
     group_by(sample, fibroblast) %>%
-    do({ # calculating cell densities for subgroups to ensure comparability
+    do({ # calculate cell densities for subgroups to ensure comparability
         d <- density(.$distance, bw = 300) 
         data.frame(x = d$x, y = d$y * nrow(.)) 
     }) %>% 
     ungroup() %>%
-    # plotting cell densities
+    # plot cell densities
     ggplot(aes(x = x, y = sample, height = y, color = fibroblast, 
                fill = fibroblast)) +
     geom_vline(xintercept = 0, col = "grey50", linetype = "dashed", linewidth = 0.2) +
@@ -194,9 +194,10 @@ gene_zone_hm <- Heatmap(summary_data,
 
 
 
+
 #### Fig. 6C ####
 
-# excluding Sham cells from BZ and IZ as Sham shows no zonation
+# exclude Sham cells from BZ and IZ as Sham shows no zonation
 speX <- spe_fib[, !(spe_fib$condition == "Sham" & 
                         spe_fib$major_zone_ed %in% c("BZ", "IZ"))]
 
@@ -229,13 +230,13 @@ gene_df <- data.frame(cells = colnames(spe_fib),
                       sample = spe_fib$sample_id,
                       x = reducedDim(spe_fib, "spatial_transform")[, 1],
                       y = reducedDim(spe_fib, "spatial_transform")[, 2])
-# Vaibhao markers - project notes
+
 gene_ss <- c("F-SH" = "Ly6a", "F-SL" = "Ndufa4l2", "F-Trans" = "Fgl2", 
              "F-WntX" = "Wif1", "F-Act" = "Postn", "IR" = "Cxcl5", 
              "F-CI" = "Top2a", "F-Cyc" = "Cdc20", "MYO" = "Col1a1", 
              "MFC" = "Comp", "F-IFNS" = "Cxcl10")
 
-gene_plt_list <- setNames(lapply(gene_ss, function(gene) {
+gene_sp_plt_list <- setNames(lapply(gene_ss, function(gene) {
     gene_df <- gene_df %>%
         mutate(gene_exp = as.numeric(assay(spe_fib, "logcounts_area")[gene,]),
                gene_exp_z = scale(gene_exp)) %>%

@@ -37,7 +37,7 @@ fib_cols <- setNames(c("#4CD02D", "#E88321", "#DE331D", "#E9EA38", "#B7C1CD",
 
 
 
-#### Panel A ####
+#### Fig. 5A & Extended Fig. 5C ####
 
 indi_substate_plot <- plotReducedDim(spe_fib, dimred = "spatial", point_size = 3, 
                                      color_by = "fibStates", point_alpha = 1, 
@@ -61,7 +61,8 @@ indi_substate_plot <- plotReducedDim(spe_fib, dimred = "spatial", point_size = 3
 
 
 
-#### Panel B ####
+
+#### Fig. 5B & Extended Fig. 5D ####
 
 all_substate_plot <- plotReducedDim(spe_fib, dimred = "spatial", point_size = 3, 
                                     color_by = "fibStates", point_alpha = 1, 
@@ -82,3 +83,53 @@ all_substate_plot <- plotReducedDim(spe_fib, dimred = "spatial", point_size = 3,
           legend.background = element_rect(fill = "black"),
           legend.text = element_text(size = 10, colour = "white"),
           legend.title = element_blank())
+
+
+
+
+#### Extended Fig. 5A ####
+
+fib_ss_plot <- table(spe_fib$sample_id, spe_fib$stabmapHarmonyDataset_lt_exact) %>%
+    as.data.frame() %>%
+    ggplot(aes(x = Var1, y = Freq, fill = Var2, group = Var2)) +
+    geom_bar(stat = "identity", position = "fill") + 
+    scale_fill_manual(values = fib_cols) +
+    labs(y = "Proportion of cells") +
+    theme_classic() +
+    theme(axis.text = element_text(size = 10),
+          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5),
+          axis.title = element_text(size = 12),
+          axis.title.x = element_blank(),
+          legend.text = element_text(size = 10),
+          legend.title = element_blank(),
+          strip.background = element_blank(),
+          strip.text = element_text(size = 14, face = "bold"))
+
+
+
+
+#### Extended Fig. 5B ####
+
+# exclude Sham cells from BZ and IZ as Sham shows no zonation
+speX <- spe_fib[, !(spe_fib$condition == "Sham" & 
+                        spe_fib$major_zone_ed %in% c("BZ", "IZ"))]
+
+zn_ss_plot <- table(speX$sample_id, speX$stabmapHarmonyDataset_lt_exact,
+                    speX$major_zone_ed) %>%
+    as.data.frame() %>%
+    # remove row combinations with no cells
+    filter(rowSums(across(Freq) != 0) > 0) %>%
+    ggplot(aes(x = Var1, y = Freq, fill = Var2, group = Var2)) +
+    geom_bar(stat = "identity", position = "fill") + 
+    facet_wrap(~Var3, scales = "free_x") +
+    scale_fill_manual(values = fib_cols) +
+    labs(y = "Proportion of cells") +
+    theme_classic() +
+    theme(axis.text = element_text(size = 10),
+          axis.text.x = element_text(angle = 90, hjust = 0, vjust = 0.5),
+          axis.title = element_text(size = 12),
+          axis.title.x = element_blank(),
+          legend.text = element_text(size = 10),
+          legend.title = element_blank(),
+          strip.background = element_blank(),
+          strip.text = element_text(size = 14, face = "bold"))

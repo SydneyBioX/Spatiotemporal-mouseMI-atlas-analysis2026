@@ -10,6 +10,7 @@ library(ComplexHeatmap)
 library(circlize)
 library(BiocNeighbors)
 library(stringr)
+library(reshape2)
 
 set.seed(2026)
 
@@ -18,7 +19,7 @@ set.seed(2026)
 spe_yam <- readRDS("./spe_Csrp3_perturb_QC.Rds")
 # rename rownames by gene names in place of geneIDs
 rownames(spe_yam) <- rowData(spe_yam)[, 2] |> make.unique()
-# calculating log normalised counts
+# calculate log normalised counts
 spe_yam <- logNormCounts(spe_yam)
 
 # add timepoint column
@@ -47,7 +48,7 @@ sig_df <- data.frame(x = spatialCoords(spe_day1)[,1],
                                        "Csrp3OE_MI_day1", "shCsrp3_MI_day14", 
                                        "WT_MI_day14_1", "WT_MI_day14_2", 
                                        "WT_MI_day14_3", "Csrp3OE_MI_day14")))
-# defining sample labels
+# define sample labels
 cond_labels <- setNames(
     c("Day1\nCsrp3 KO", "Day1\nWildtype_1", "Day1\nWildtype_2", "Day1\nWildtype_3", 
       "Day1\nCsrp3 OE", "Day14\nCsrp3 KO", "Day14\nWildtype_1", "Day14\nWildtype_2", 
@@ -75,7 +76,6 @@ sig_plt_list <- setNames(lapply(markers_ct, function(gene) {
             arrange(gene_exp_z) 
     }
     
-    # faceted plots
     plt <- ggplot(sig_df, aes(x = x, y = y, color = gene_exp_z)) +
         geom_point(size = 1) +
         labs(color = gene) +
@@ -97,7 +97,6 @@ sig_plt_list <- setNames(lapply(markers_ct, function(gene) {
               legend.title = element_text(size = 12, colour = "white"),
               legend.background = element_rect(fill = "black"),
               legend.text = element_text(size = 10, colour = "white"))
-    print(gene)
     return(plt)
 }), markers_ct)
 
@@ -121,7 +120,7 @@ gene_df <- data.frame(x = spatialCoords(spe_day1)[,1],
                                        "Csrp3OE_MI_day1", "shCsrp3_MI_day14", 
                                        "WT_MI_day14_1", "WT_MI_day14_2", 
                                        "WT_MI_day14_3", "Csrp3OE_MI_day14")))
-# defining sample labels
+# define sample labels
 cond_labels <- setNames(
     c("Day1\nCsrp3 KO", "Day1\nWildtype_1", "Day1\nWildtype_2", "Day1\nWildtype_3", 
       "Day1\nCsrp3 OE", "Day14\nCsrp3 KO", "Day14\nWildtype_1", "Day14\nWildtype_2", 
@@ -134,7 +133,6 @@ sig_plt_list <- setNames(lapply(markers_BZ, function(gene) {
                gene_exp_z = scale(gene_exp)) %>%
         arrange(gene_exp_z) 
     
-    # faceted plots
     plt <- ggplot(gene_df, aes(x = x, y = y, color = gene_exp_z)) +
         geom_point(size = 1) +
         labs(color = gene) +
@@ -156,7 +154,6 @@ sig_plt_list <- setNames(lapply(markers_BZ, function(gene) {
               legend.title = element_text(size = 12, colour = "white"),
               legend.background = element_rect(fill = "black"),
               legend.text = element_text(size = 10, colour = "white"))
-    print(gene)
     return(plt)
 }), markers_BZ)
 
@@ -214,7 +211,6 @@ sig_plt_list2 <- setNames(lapply(markers_imm, function(gene) {
             arrange(gene_exp_z) 
     }
     
-    # faceted plots
     plt <- ggplot(sig_df2, aes(x = x, y = y, color = gene_exp_z)) +
         geom_point(size = 1) +
         labs(color = gene) +
@@ -236,7 +232,6 @@ sig_plt_list2 <- setNames(lapply(markers_imm, function(gene) {
               legend.title = element_text(size = 12, colour = "white"),
               legend.background = element_rect(fill = "black"),
               legend.text = element_text(size = 10, colour = "white"))
-    print(gene)
     return(plt)
 }), markers_imm)
 
@@ -261,7 +256,6 @@ spe_yam$Condition <-factor(spe_yam$Condition, levels = c("WT", "shCsrp3", "Csrp3
 sig_enrich_plots <- lapply(names(gene_sigs), function(ct) {
   col <- paste0(ct, "_UCell")
   plt <- as.data.frame(colData(spe_yam)) %>%
-    # filter(Time == "Day1") %>%
     ggplot(aes(x = get(col), color = Condition, fill = Condition)) +
     geom_density(bw = 0.2, linewidth = 0.8, alpha = 0.1) +
     facet_wrap(~Time, nrow = 1) +
@@ -503,69 +497,65 @@ NN_meanlog_substate_heatmap <- function(spe, coloc_df_all, p_mat,
   # calculate neighbor proportions
   coloc_prop <- as.matrix(coloc_df_all) / rowSums(as.matrix(coloc_df_all))
   
-  #### getting MEAN LOG RATIO of substate/non-substate cells
+  # get mean log ratio of substate/non-substate cells
   
   coloc_df <- coloc_prop %>%
-    as.data.frame() %>% # converting to data frame
-    # adding column for substate and non-substate fibroblasts
+    as.data.frame() %>%
+    # add column for substate and non-substate fibroblasts
     mutate(Source_label = str_split_i(rownames(coloc_prop), "---", i = 2),
            Sample = factor(str_split_i(rownames(coloc_prop), "---", i = 1),
                            levels = samples_ord)) %>%
-    # melting dataframe
+    # melt dataframe
     pivot_longer(!c(Sample, Source_label), 
                  names_to = "Neighbouring_celltypes", 
                  values_to = "counts") %>%
-    # elongating dataframe to compare between fibrotic classes
+    # elongate dataframe to compare between fibrotic classes
     pivot_wider(names_from = Source_label, values_from = counts) %>%
-    # calculating and adding logratio of substate vs non-substate 
-    # cell neighbourhoods
+    # calculate and add log ratio of substate vs non-substate 
     mutate(logratio = log2((get(substate) + 1) / 
                              (get(non_substate) + 1))) %>%
-    # selecting specific columns to elongate
+    # select specific columns to elongate
     select(Sample, Neighbouring_celltypes, logratio) %>%
-    # adding Day and repeat columns
+    # add Day and repeat columns
     mutate(Day = str_split_i(Sample, "_", i = 1),
            Repeat = str_split_i(Sample, "_", i = 2),
            Sample = NULL) %>%
-    # selecting specific columns to elongate
+    # select specific columns to elongate
     select(Day, Repeat, Neighbouring_celltypes, logratio) %>%
-    # elongating data frame to compare between repeats
+    # elongate data frame to compare between repeats
     pivot_wider(names_from = Repeat, values_from = logratio) %>%
-    # calculating mean of logRatio in sample repeats
+    # calculate mean of logRatio in sample repeats
     mutate(MeanLogRatio = (`1` + `2`) / 2) %>%
-    # selecting specific columns to elongate
+    # select specific columns to elongate
     select(Day, Neighbouring_celltypes, MeanLogRatio) %>%
-    # elongating dataframe to sample x neighbourhood with logratio values
+    # elongate dataframe to sample x neighbourhood with logratio values
     pivot_wider(names_from = Neighbouring_celltypes, 
                 values_from = MeanLogRatio) %>%
     as.data.frame() # converting to data frame
-  # adding timepoint and fibroblast substate names as rownames
+  # add timepoint and fibroblast substate names as rownames
   rownames(coloc_df) <- coloc_df$Day 
   
-  # excluding sample names and converting to numeric matrix
+  # exclude sample names and convert to numeric matrix
   coloc_mat <- as.matrix(coloc_df[, -c(1)])
   
-  # counting substate cells in each condition   
+  # count substate cells in each condition   
   substate_counts <- 
     table(spe$condition, spe$fibStates)[, substate]
-  # creating top annotation bar plot for the heatmap
-  # col_annot <- HeatmapAnnotation(
-  #     "Total\nsubstate\ncells" = anno_barplot(
-  #         substate_counts, gp = gpar(fill = "black")))
+  # create top annotation bar plot for the heatmap
   col_annot <- do.call(HeatmapAnnotation, setNames(
     list(anno_barplot(substate_counts, gp = gpar(fill = "black"))),
     paste0("Total\n", substate, " cells")))
-  # defining color range
+  # define color range
   col_func <- colorRamp2(c(min(coloc_mat, na.rm = TRUE), 0, 
                            max(coloc_mat, na.rm = TRUE)), 
                          c("blue", "white", "red"))
   
-  # CHECK p_mat ROWNAMES
+  # Check p_mat rownames before using
   if (identical(rownames(p_mat), colnames(coloc_mat)) != TRUE) {
     p_mat <- p_mat[colnames(coloc_mat), ]
   } 
   
-  # creating heatmap
+  # create heatmap
   if (substate == "F-WntX_Wif1") {
     substate = "F-WntX"
     non_substate = "nonF-WntX"
@@ -581,14 +571,12 @@ NN_meanlog_substate_heatmap <- function(spe, coloc_df_all, p_mat,
     border_gp = grid::gpar(col = "black", lty = 2, lwd = 1),
     rect_gp = grid::gpar(col = "white", lwd = 1),
     column_title_gp = gpar(fontsize = 14),
-    # row_title = "Neighbouring cell types",
-    # row_title_gp = gpar(fontsize = 14),
     row_names_side = "left",
     row_names_gp = gpar(fontsize = 12),
     column_names_gp = gpar(fontsize = 12),
     column_names_side = "top",
     top_annotation = col_annot,
-    # adding adjusted p-values
+    # add adjusted p-values
     cell_fun = function(j, i, x, y, width, height, fill) {
       p <- p_mat[i, j]
       if (!is.na(p)) {
@@ -772,4 +760,140 @@ for (fib in levels(spe$fibStates)) {
     samples_ord = levels(spe$sample_id), 
     knn5_neigh_data = neigh_data)
 }
+
+
+
+
+#### Extended Fig. 7B ####
+
+markers_ss <- c("F-SH_sig", "F-SL_sig", "F-Trans_sig", "F-Act_sig", "MFC_sig") 
+
+fib_df <- data.frame(x = spatialCoords(spe_yam)[,1],
+                     y = spatialCoords(spe_yam)[,2],
+                     samples = spe_yam$sample_group) %>%
+  # sample factors
+  mutate(samples = factor(samples, 
+                          levels = c("WT_MI_day1_1", "WT_MI_day1_2", 
+                                     "WT_MI_day1_3", "shCsrp3_MI_day1", 
+                                     "Csrp3OE_MI_day1", "WT_MI_day14_1", 
+                                     "WT_MI_day14_2", "WT_MI_day14_3", 
+                                     "shCsrp3_MI_day14", "Csrp3OE_MI_day14")))
+# define sample labels
+cond_labels <- setNames(
+  c("Day1\nWildtype_1", "Day1\nWildtype_2", "Day1\nWildtype_3", "Day1\nCsrp3 KO", 
+    "Day1\nCsrp3 OE", "Day14\nWildtype_1", "Day14\nWildtype_2", 
+    "Day14\nWildtype_3", "Day14\nCsrp3 KO", "Day14\nCsrp3 OE"), 
+  levels(fib_df$samples))
+
+sig_ss_plt_list <- setNames(lapply(markers_ss, function(gene) {
+  if (gene == "MFC_sig") {
+    MFC_genes = c("Fgl2", "Comp", "Dkk3", "Fmod", "Cthrc1",
+                  "Col1a1", "Fn1", "Cfh", "Postn")
+    fib_df <- fib_df %>%
+      mutate(gene_exp = colMeans(logcounts(spe_yam)[MFC_genes, ]),
+             gene_exp_z = scale(gene_exp)) %>%
+      arrange(gene_exp_z)
+  } else if (gene == "F-SH_sig") {
+    FSH_genes = c("Ly6a", "Tmem100", "Efhd1", "Cd248", "Pi16", "Thy1")
+    fib_df <- fib_df %>%
+      mutate(gene_exp = colMeans(logcounts(spe_yam)[FSH_genes, ]),
+             gene_exp_z = scale(gene_exp)) %>%
+      arrange(gene_exp_z)
+  } else if (gene == "F-SL_sig") {
+    FSL_genes = c("Hsd11b1", "Cxcl14")
+    fib_df <- fib_df %>%
+      mutate(gene_exp = colMeans(logcounts(spe_yam)[FSL_genes, ]),
+             gene_exp_z = scale(gene_exp)) %>%
+      arrange(gene_exp_z)
+  } else if (gene == "F-Act_sig") {
+    FAct_genes = c("Cilp", "Meox1", "Col8a1", "Postn")
+    fib_df <- fib_df %>%
+      mutate(gene_exp = colMeans(logcounts(spe_yam)[FAct_genes, ]),
+             gene_exp_z = scale(gene_exp)) %>%
+      arrange(gene_exp_z)
+  } else if (gene == "F-Trans_sig") {
+    FTrans_genes = "Fgl2"
+    fib_df <- fib_df %>%
+      mutate(gene_exp = logcounts(spe_yam)[FTrans_genes, ],
+             gene_exp_z = scale(gene_exp)) %>%
+      arrange(gene_exp_z)
+  }
+  
+  plt <- ggplot(fib_df, aes(x = x, y = y, color = gene_exp_z)) +
+    geom_point(size = 1) +
+    labs(color = gene) +
+    facet_wrap(~samples, nrow = 2) +
+    scale_color_gradientn(colors = c("#5a53a4", "#5ab0ab", "#fffbbb",
+                                     "#f6794b", "#a10741"),
+                          values = scales::rescale(c(-2, -1, 0, 1, 2)),
+                          limits = c(-2, 2), 
+                          oob = scales::squish) +
+    theme_classic() +
+    theme(plot.background = element_rect(fill = "black"),
+          panel.background = element_rect(fill = "black"),
+          panel.border = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          axis.line = element_blank(),
+          legend.title = element_text(size = 12, colour = "white"),
+          legend.background = element_rect(fill = "black"),
+          legend.text = element_text(size = 10, colour = "white"))
+    return(plt)
+}), markers_ss)
+
+
+
+
+#### Extended Fig. 7C ####
+
+# load processed data 
+spe <- readRDS("./spe_processed_final.Rds")
+
+# immune markers
+specificImm_markers <- c(
+  # Neutrophils
+  "S100a8", "Fut4",
+  # Inflammatory Macrophages
+  "Cd14", "Ccr2", "Fcgr1",
+  # Reparative Macrophages 
+  "Cx3cr1", "C1qa", "C1qb", "Cd163", "Folr2", "Mgl2", "Csf1r", "Trem2")
+
+gexp_marker <- assay(spe, "logcounts_area")[specificImm_markers, ] |> 
+  as.matrix() |> t() |> as.data.frame()
+# add cluster label to expression data frame
+gexp_marker$cluster <- factor(as.character(spe$Immune_ct))
+gexp_marker_melt <- reshape2::melt(gexp_marker, id.vars = "cluster", 
+                                   variable.name = "gene", 
+                                   value.name = "expression")
+# summarize data
+summary_data <- gexp_marker_melt %>%
+  group_by(cluster, gene) %>%
+  summarise(
+    meanExpression = mean(expression),
+    PerctageCells = sum(expression > 0) / n() * 100) %>%
+  as.data.frame() %>%
+  # scale gene expression
+  group_by(gene) %>%
+  mutate(exp_scaled = 
+           (meanExpression - mean(meanExpression)) / sd(meanExpression),
+         cluster = factor(cluster, 
+                          levels = c("Neutrophil", "Inflammatory_Macrophage",
+                                     "Reparative_Macrophage", "Other_Immune", 
+                                     "Other")))
+markerPlot <- summary_data %>%
+  ggplot(aes(x = cluster, y = gene, size = PerctageCells, 
+             color = exp_scaled)) +
+  geom_point() +
+  scale_size_continuous(limit = c(0, 100), range = c(0, 5)) + 
+  scale_color_gradient2(low = "#2166ac", mid = "white", high = "#b2182b") + 
+  labs(color = "Scaled\nexpression", size = "Cells\ndetected") +
+  scale_y_discrete(limits = rev) +
+  theme_classic() +
+  theme(axis.title = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.box = "vertical") 
 
